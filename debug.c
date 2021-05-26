@@ -460,9 +460,10 @@ static int stat_show(struct seq_file *s, void *v)
 		seq_printf(s, "  - paged : %llu KB\n",
 				si->page_mem >> 10);
 
-		for(i = 0; i < MAIN_SEGS(si->sbi) * si->sbi->blocks_per_seg; i++){
-			if((si->sbi->blk_cnt_en + i)->cnt != 0)
-				seq_printf(s, "cnt: %u\n", (si->sbi->blk_cnt_en + i)->cnt);
+		for (i = 0; i < MAIN_SEGS(si->sbi) * si->sbi->blocks_per_seg; i++){
+			if (((si->sbi->blk_cnt_en + i)->IRR != MAX_IRR)){
+				seq_printf(s, "IRR: %u, LWS: %u\n", (si->sbi->blk_cnt_en + i)->IRR, (si->sbi->blk_cnt_en + i)->LWS);
+			}
 		}
 	}
 	mutex_unlock(&f2fs_stat_mutex);

@@ -3136,6 +3136,13 @@ static int f2fs_scan_devices(struct f2fs_sb_info *sbi)
 static void f2fs_build_block_cnt_manager(struct f2fs_sb_info *sbi)
 {
 	struct blk_cnt_entry *blk_cnt_en = vzalloc(sizeof(struct blk_cnt_entry) * MAIN_SEGS(sbi) * sbi->blocks_per_seg);
+
+	int i = 0;
+	for(i = 0; i < MAIN_SEGS(sbi) * sbi->blocks_per_seg; i++){
+		(blk_cnt_en + i)->IRR = MAX_IRR;
+		(blk_cnt_en + i)->LWS = 0;
+	}
+
 	sbi->blk_cnt_en = blk_cnt_en;
 }
 

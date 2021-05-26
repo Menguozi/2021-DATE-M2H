@@ -174,8 +174,11 @@ struct victim_sel_policy {
 	unsigned int min_segno;		/* segment # having min. cost */
 };
 
+#define MAX_IRR		((unsigned int)(~0))
+
 struct blk_cnt_entry{
-	unsigned int cnt;/*hotness of block*/
+	unsigned int IRR;/*hotness of block*/
+	unsigned int LWS;/*modified time of block*/
 };
 
 struct seg_entry {

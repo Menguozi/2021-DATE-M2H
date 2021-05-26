@@ -3191,13 +3191,44 @@ static void update_device_state(struct f2fs_io_info *fio)
 	}
 }
 
+static void get_hotness_info(struct f2fs_sb_info *sbi, block_t old_blkaddr, unsigned int *old_IRR, unsigned int *old_LWS)
+{
+	unsigned int old_segno = 0, old_offset = 0;
+	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO){
+		old_segno = GET_SEGNO(sbi, old_blkaddr);
+		old_offset = GET_BLKOFF_FROM_SEG0(sbi, old_blkaddr);
+		*old_IRR = sbi->blk_cnt_en[old_segno * sbi->blocks_per_seg + old_offset].IRR;
+		*old_LWS = sbi->blk_cnt_en[old_segno * sbi->blocks_per_seg + old_offset].LWS;
+	}
+}
+
+static void set_hotness_info(struct f2fs_sb_info *sbi, block_t blkaddr, unsigned int IRR_val, unsigned int LWS_val)
+{
+	unsigned int new_segno = 0, new_offset = 0;
+	if (GET_SEGNO(sbi, blkaddr) != NULL_SEGNO){
+		new_segno = GET_SEGNO(sbi, blkaddr);
+		new_offset = GET_BLKOFF_FROM_SEG0(sbi, blkaddr);
+		sbi->blk_cnt_en[new_segno * sbi->blocks_per_seg + new_offset].IRR = IRR_val;
+		sbi->blk_cnt_en[new_segno * sbi->blocks_per_seg + new_offset].LWS = LWS_val;
+	}
+}
+
+static unsigned int get_new_IRR(struct f2fs_sb_info *sbi, block_t old_blkaddr)
+{
+	unsigned int old_IRR = 0, new_IRR = MAX_IRR,old_LWS = 0;
+	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO){
+		get_hotness_info(sbi, old_blkaddr, &old_IRR, &old_LWS);
+		new_IRR = sbi->block_count[2] - old_LWS;
+	}
+	return new_IRR;
+}
+
 static void do_write_page(struct f2fs_summary *sum, struct f2fs_io_info *fio)
 {
 	int type = __get_segment_type(fio);
 	bool keep_order = (test_opt(fio->sbi, LFS) && type == CURSEG_COLD_DATA);
-	
-	if (GET_SEGNO(fio->sbi, fio->old_blkaddr) != NULL_SEGNO)
-		fio->sbi->block_count[2]++;
+
+	unsigned int new_IRR = 0;
 
 	if (keep_order)
 		down_read(&fio->sbi->io_order_lock);
@@ -3215,14 +3246,12 @@ reallocate:
 		goto reallocate;
 	}
 
-	unsigned int old_segno = 0, old_offset = 0, new_segno = 0, new_offset = 0, old_cnt = 0;
-	if (GET_SEGNO(fio->sbi, fio->old_blkaddr) != NULL_SEGNO)
-		old_segno = GET_SEGNO(fio->sbi, fio->old_blkaddr);
-		old_offset = GET_BLKOFF_FROM_SEG0(fio->sbi, fio->old_blkaddr);
-		old_cnt = fio->sbi->blk_cnt_en[old_segno * fio->sbi->blocks_per_seg + old_offset].cnt = 0;
-	new_segno = GET_SEGNO(fio->sbi, fio->new_blkaddr);
-	new_offset = GET_BLKOFF_FROM_SEG0(fio->sbi, fio->new_blkaddr);
-	fio->sbi->blk_cnt_en[new_segno * fio->sbi->blocks_per_seg + new_offset].cnt = old_cnt + 1;
+	if (type == CURSEG_WARM_DATA){
+		fio->sbi->block_count[2]++;
+		new_IRR = get_new_IRR(fio->sbi, fio->old_blkaddr);
+		set_hotness_info(fio->sbi, fio->new_blkaddr, new_IRR, fio->sbi->block_count[2]);
+		set_hotness_info(fio->sbi, fio->old_blkaddr, MAX_IRR, 0);
+	}
 
 	update_device_state(fio);
 
