@@ -174,6 +174,10 @@ struct victim_sel_policy {
 	unsigned int min_segno;		/* segment # having min. cost */
 };
 
+struct blk_cnt_entry{
+	unsigned int cnt;/*hotness of block*/
+};
+
 struct seg_entry {
 	unsigned int type:6;		/* segment type like CURSEG_XXX_TYPE */
 	unsigned int valid_blocks:10;	/* # of valid blocks */

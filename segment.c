@@ -168,6 +168,7 @@ found:
 
 bool f2fs_need_SSR(struct f2fs_sb_info *sbi)
 {
+	return false;
 	int node_secs = get_blocktype_secs(sbi, F2FS_DIRTY_NODES);
 	int dent_secs = get_blocktype_secs(sbi, F2FS_DIRTY_DENTS);
 	int imeta_secs = get_blocktype_secs(sbi, F2FS_DIRTY_IMETA);
@@ -3194,6 +3195,9 @@ static void do_write_page(struct f2fs_summary *sum, struct f2fs_io_info *fio)
 {
 	int type = __get_segment_type(fio);
 	bool keep_order = (test_opt(fio->sbi, LFS) && type == CURSEG_COLD_DATA);
+	
+	if (GET_SEGNO(fio->sbi, fio->old_blkaddr) != NULL_SEGNO)
+		fio->sbi->block_count[2]++;
 
 	if (keep_order)
 		down_read(&fio->sbi->io_order_lock);
@@ -3210,6 +3214,15 @@ reallocate:
 		fio->old_blkaddr = fio->new_blkaddr;
 		goto reallocate;
 	}
+
+	unsigned int old_segno = 0, old_offset = 0, new_segno = 0, new_offset = 0, old_cnt = 0;
+	if (GET_SEGNO(fio->sbi, fio->old_blkaddr) != NULL_SEGNO)
+		old_segno = GET_SEGNO(fio->sbi, fio->old_blkaddr);
+		old_offset = GET_BLKOFF_FROM_SEG0(fio->sbi, fio->old_blkaddr);
+		old_cnt = fio->sbi->blk_cnt_en[old_segno * fio->sbi->blocks_per_seg + old_offset].cnt = 0;
+	new_segno = GET_SEGNO(fio->sbi, fio->new_blkaddr);
+	new_offset = GET_BLKOFF_FROM_SEG0(fio->sbi, fio->new_blkaddr);
+	fio->sbi->blk_cnt_en[new_segno * fio->sbi->blocks_per_seg + new_offset].cnt = old_cnt + 1;
 
 	update_device_state(fio);
 

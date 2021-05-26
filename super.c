@@ -3133,6 +3133,12 @@ static int f2fs_scan_devices(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+static void f2fs_build_block_cnt_manager(struct f2fs_sb_info *sbi)
+{
+	struct blk_cnt_entry *blk_cnt_en = vzalloc(sizeof(struct blk_cnt_entry) * MAIN_SEGS(sbi) * sbi->blocks_per_seg);
+	sbi->blk_cnt_en = blk_cnt_en;
+}
+
 static int f2fs_setup_casefold(struct f2fs_sb_info *sbi)
 {
 #ifdef CONFIG_UNICODE
@@ -3451,6 +3457,8 @@ try_onemore:
 			le64_to_cpu(seg_i->journal->info.kbytes_written);
 
 	f2fs_build_gc_manager(sbi);
+
+	f2fs_build_block_cnt_manager(sbi);
 
 	err = f2fs_build_stats(sbi);
 	if (err)
